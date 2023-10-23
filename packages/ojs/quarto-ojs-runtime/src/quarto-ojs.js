@@ -31,6 +31,8 @@ import { OJSConnector } from "./ojs-connector.js";
 
 import { createQuartoJsxShim } from "./quarto-jsx.js";
 
+import { autosizeOJSPlot } from "./ojs-code-transform.js";
+
 import mime from "mime";
 
 //////////////////////////////////////////////////////////////////////////////
@@ -666,6 +668,63 @@ export function createRuntime() {
    || document.querySelector("div.reveal")       // reveal
    || document.querySelector("body"));           // fall-through
 
+  function cards() {
+    if (mainEl === null) {
+      return lib.Generators.observe((change) => {
+        change(undefined);
+      });
+    }
+    return lib.Generators.observe(function(change) {
+      let previous = undefined;
+      function resized() {
+        let changed = false;
+        const result = {};
+        let cellIndex = 0;
+        for (const card of document.querySelectorAll("div.card div.cell-output-display")) {
+          debugger;
+          const cardInfo = {
+            card,
+            width: card.clientWidth,
+            height: card.clientHeight,
+          }
+          result[cellIndex] = cardInfo;
+          if (previous === undefined || 
+              previous[cellIndex].width !== cardInfo.width || 
+              previous[cellIndex].height !== cardInfo.height) {
+            changed = true;
+          }
+          cellIndex++;
+
+          // there can be an id in the card itself, allow that as a key
+          if (card.id) {
+            result[card.id] = cardInfo;
+          }
+          for (const div of card.querySelectorAll("div")) {
+            // allow auto-generated ids as keys for
+            // implicit autosizing
+            if (div.id.startsWith("ojs-cell-")) {
+              result[div.id] = cardInfo;
+            }
+            // parent ids are also allowed since they come up in
+            // layouts of multiple OJS cells per card
+            if (div.parentElement.id) {
+              result[div.parentElement.id] = cardInfo;
+            }
+          }
+        }
+        if (changed) {
+          previous = result;
+          change(result);
+        }
+      }
+      resized();
+      window.addEventListener("resize", resized);
+      return function() {
+        window.removeEventListener("resize", resized);
+      }
+    });
+  }
+
   function width() {
     if (mainEl === null) {
       return lib.Generators.observe((change) => {
@@ -685,6 +744,7 @@ export function createRuntime() {
     });
   }
   lib.width = width;
+  lib.cards = cards;
 
   // hack for "echo: fenced": remove all "//| echo: fenced" lines the hard way, but keep
   // the right line numbers around.
@@ -929,16 +989,20 @@ export function createRuntime() {
       for (const el of document.querySelectorAll(
         "script[type='ojs-module-contents']"
       )) {
+        const autosize = document.querySelectorAll("div.card div.cell-output-display").length > 0;
+
         for (const call of JSON.parse(el.text).contents) {
+          let source = autosize ? autosizeOJSPlot(call.source, call.cellName) : call.source;
+          console.log({ original: call.source, transformed: source });
           switch (call.methodName) {
             case "interpret":
-              this.interpret(call.source, call.cellName, call.inline);
+              this.interpret(source, call.cellName, call.inline);
               break;
             case "interpretLenient":
-              this.interpretLenient(call.source, call.cellName, call.inline);
+              this.interpretLenient(source, call.cellName, call.inline);
               break;
             case "interpretQuiet":
-              this.interpretQuiet(call.source);
+              this.interpretQuiet(source);
               break;
             default:
               throw new Error(
