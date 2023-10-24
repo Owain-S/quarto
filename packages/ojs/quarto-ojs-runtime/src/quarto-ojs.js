@@ -702,15 +702,23 @@ export function createRuntime() {
         for (const card of document.querySelectorAll("div.card div.cell-output-display")) {
           handle(card);
         }
-        for (const card of document.querySelectorAll("div.card div.quarto-layout-row")) {
+        for (const card of document.querySelectorAll("div.card div.quarto-layout-cell")) {
           handle(card);
         }
         for (const card of document.querySelectorAll("div")) {
           if (!(card.id.startsWith("ojs-cell-") && card.dataset.nodetype === "expression")) {
             continue;
           }
+          let cardInfoCard;
+          if (card.parentElement.classList.contains("quarto-layout-cell")) {
+            cardInfoCard = card.parentElement;
+          } else if (card.parentElement.parentElement.classList.contains("cell-output-display")) {
+            cardInfoCard = card.parentElement.parentElement
+          } else {
+            continue;
+          }
           const cardInfo = {
-            card: card.parentElement,
+            card: cardInfoCard,
             width: card.clientWidth,
             height: card.clientHeight,
           }
@@ -727,6 +735,7 @@ export function createRuntime() {
 
         if (changed) {
           previous = result;
+          window.hackResultStored = result
           change(result);
         }
       }
