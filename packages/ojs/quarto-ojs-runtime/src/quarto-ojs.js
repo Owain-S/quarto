@@ -711,7 +711,6 @@ export function createRuntime() {
           if (!(card.id.startsWith("ojs-cell-"))) {
             continue;
           }
-          console.log(card);
           let cardInfoCard;
           // many possible cases:
 
