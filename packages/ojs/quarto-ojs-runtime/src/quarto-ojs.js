@@ -680,7 +680,7 @@ export function createRuntime() {
         let changed = false;
         const result = {};
         let cellIndex = 0;
-        for (const card of document.querySelectorAll("div.card div.cell-output-display")) {
+        const handle = (card) => {
           const cardInfo = {
             card,
             width: card.clientWidth,
@@ -699,12 +699,18 @@ export function createRuntime() {
             result[card.id] = cardInfo;
           }
         }
+        for (const card of document.querySelectorAll("div.card div.cell-output-display")) {
+          handle(card);
+        }
+        for (const card of document.querySelectorAll("div.card div.quarto-layout-row")) {
+          handle(card);
+        }
         for (const card of document.querySelectorAll("div")) {
           if (!(card.id.startsWith("ojs-cell-") && card.dataset.nodetype === "expression")) {
             continue;
           }
           const cardInfo = {
-            card,
+            card: card.parentElement,
             width: card.clientWidth,
             height: card.clientHeight,
           }
