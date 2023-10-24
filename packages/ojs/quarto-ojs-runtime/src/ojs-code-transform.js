@@ -89,7 +89,29 @@ Plot.(method(...).method(...).)plot({
   height: card[$CARD_IN_SCOPE].height,
   ...
 }) */
+const multipleOutputCellMap = {};
 function rewritePlotPlotCall(exp, cellName) {
+  // First, check if cellName exists. If it doesn't,
+  // then that's likely because we're on a multiple-output cell.
+  // attempt to find a cell with the name cellName-1, cellName-2, etc.
+  const fixupCellName = () => {
+    if (document.getElementById(cellName) === null) {
+      let index = 1;
+      let subcellName;
+      do {
+        subcellName = `${cellName}-${index}`;
+        index += 1;
+        if (document.getElementById(subcellName) !== null && multipleOutputCellMap[subcellName] === undefined) {
+          multipleOutputCellMap[subcellName] = true;
+          return subcellName;
+        }
+      } while (document.getElementById(subcellName) !== null);
+      return undefined;
+    } else {
+      return cellName;
+    }
+  }
+  
   const args = isPlotPlotCall(exp);
   if (args === null) {
     return false;
@@ -117,6 +139,10 @@ function rewritePlotPlotCall(exp, cellName) {
   //     width: cards[cardIndex].width property
   // and height: cards[cardIndex].height property
 
+  const cellNameToUse = fixupCellName();
+  if (cellNameToUse === undefined) {
+    return false;
+  }
   const value = (field) => ({
     type: "MemberExpression",
     object: {
@@ -128,7 +154,7 @@ function rewritePlotPlotCall(exp, cellName) {
       },
       property: {
         type: "Literal",
-        value: cellName,
+        value: cellNameToUse,
       },
     },
     property: {
@@ -155,7 +181,6 @@ export function autosizeOJSPlot(
   cellName,
 ) {
   // deno-lint-ignore no-explicit-any
-  debugger;
   let ast;
   try {
     ast = parseModule(src);
@@ -165,13 +190,10 @@ export function autosizeOJSPlot(
     if (!(e instanceof SyntaxError)) throw e;
     return src;
   }
-  console.log(ast);
   ojsSimpleWalker(ast, {
     // deno-lint-ignore no-explicit-any
     CallExpression(exp) {
-      console.log({exp});
       if (rewritePlotPlotCall(exp, cellName)) {
-        console.log("Hit!");
         return;
       }
     }

@@ -681,7 +681,6 @@ export function createRuntime() {
         const result = {};
         let cellIndex = 0;
         for (const card of document.querySelectorAll("div.card div.cell-output-display")) {
-          debugger;
           const cardInfo = {
             card,
             width: card.clientWidth,
@@ -699,19 +698,27 @@ export function createRuntime() {
           if (card.id) {
             result[card.id] = cardInfo;
           }
-          for (const div of card.querySelectorAll("div")) {
-            // allow auto-generated ids as keys for
-            // implicit autosizing
-            if (div.id.startsWith("ojs-cell-")) {
-              result[div.id] = cardInfo;
-            }
-            // parent ids are also allowed since they come up in
-            // layouts of multiple OJS cells per card
-            if (div.parentElement.id) {
-              result[div.parentElement.id] = cardInfo;
-            }
+        }
+        for (const card of document.querySelectorAll("div")) {
+          if (!(card.id.startsWith("ojs-cell-") && card.dataset.nodetype === "expression")) {
+            continue;
+          }
+          const cardInfo = {
+            card,
+            width: card.clientWidth,
+            height: card.clientHeight,
+          }
+          result[card.id] = cardInfo;
+          if (previous === undefined || 
+            previous[card.id].width !== cardInfo.width || 
+            previous[card.id].height !== cardInfo.height) {
+            changed = true;
+          }
+          if (card.parentElement.id !== "") {
+            result[card.parentElement.id] = cardInfo;
           }
         }
+
         if (changed) {
           previous = result;
           change(result);
