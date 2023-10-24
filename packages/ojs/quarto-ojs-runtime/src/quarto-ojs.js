@@ -699,7 +699,7 @@ export function createRuntime() {
             result[card.id] = cardInfo;
           }
         }
-        for (const card of document.querySelectorAll("div.card div.cell-output-display")) {
+        for (const card of document.querySelectorAll("div.card")) {
           for (const cell of card.querySelectorAll("div.cell-output-display")) {
             handle(cell);
           }
@@ -708,9 +708,10 @@ export function createRuntime() {
           }
         }
         for (const card of document.querySelectorAll("div")) {
-          if (!(card.id.startsWith("ojs-cell-") && card.dataset.nodetype === "expression")) {
+          if (!(card.id.startsWith("ojs-cell-"))) {
             continue;
           }
+          console.log(card);
           let cardInfoCard;
           // many possible cases:
 
@@ -744,7 +745,6 @@ export function createRuntime() {
 
         if (changed) {
           previous = result;
-          window.hackResultStored = result
           change(result);
         }
       }
@@ -1024,7 +1024,6 @@ export function createRuntime() {
 
         for (const call of JSON.parse(el.text).contents) {
           let source = autosize ? autosizeOJSPlot(call.source, call.cellName) : call.source;
-          console.log({ original: call.source, transformed: source });
           switch (call.methodName) {
             case "interpret":
               this.interpret(source, call.cellName, call.inline);
